@@ -3,7 +3,7 @@ const express = require("express");
 const cors = require("cors");
 const port = process.env.PORT || 8000;
 const mongoose = require("mongoose");
-const credentials = require("./credentials.json");
+const credentials = require("./utils/credentials.json");
 
 const admin = require("firebase-admin");
 
