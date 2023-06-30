@@ -1,13 +1,5 @@
 const mongoose = require("mongoose");
 
-// Define the subdocument schema for linked providers
-const linkedProviderSchema = new mongoose.Schema(
-  {
-    provider: { type: String, required: true },
-    providerId: { type: String, required: true },
-  },
-  { _id: false }
-);
 // Define the Preferences schema
 const preferencesSchema = new mongoose.Schema({
   age: { type: [Number], default: [] },
@@ -38,7 +30,6 @@ const userSchema = new mongoose.Schema(
       { type: mongoose.Schema.Types.ObjectId, ref: "User", default: [] },
     ],
     photos: [{ type: mongoose.Schema.Types.ObjectId, ref: "Photo" }],
-    linkedProviders: [linkedProviderSchema],
   },
   { timestamps: true }
 );

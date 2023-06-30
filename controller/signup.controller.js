@@ -119,7 +119,6 @@ const verifyOtherServices = async (req, res) => {
 
     // Check if the user exists in the database
     const user = await User.findOne({ email });
-    console.log(email);
 
     if (user) {
       // User already exists, prompt them to sign in
