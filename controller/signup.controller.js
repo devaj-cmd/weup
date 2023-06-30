@@ -120,7 +120,7 @@ const verifyOtherServices = async (req, res) => {
     console.log(email);
     // Check if the user exists in the database
 
-    return res.sendStatus(2000);
+    return res.sendStatus(200);
     const user = await User.findOne({ email });
 
     if (user) {
