@@ -117,10 +117,10 @@ const verifyOtherServices = async (req, res) => {
     // Verify the token
     const { email } = await verifyToken(token);
 
-    console.log(email);
+    console.log(email, "two");
     // Check if the user exists in the database
 
-    return res.sendStatus(200);
+    // return res.sendStatus(200);
     const user = await User.findOne({ email });
 
     if (user) {
