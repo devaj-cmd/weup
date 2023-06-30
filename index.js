@@ -58,7 +58,6 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // routes
 app.use("/api", signUpRoute);
-console.log(serviceAccount);
 
 app.listen(port, () => {
   console.log("Server running on port", port);

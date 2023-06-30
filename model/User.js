@@ -1,11 +1,13 @@
 const mongoose = require("mongoose");
 
 // Define the subdocument schema for linked providers
-const linkedProviderSchema = new mongoose.Schema({
-  provider: { type: String, required: true }, // e.g., "facebook", "google", etc.
-  providerId: { type: String, required: true }, // unique identifier from the provider
-});
-
+const linkedProviderSchema = new mongoose.Schema(
+  {
+    provider: { type: String, required: true },
+    providerId: { type: String, required: true },
+  },
+  { _id: false }
+);
 // Define the Preferences schema
 const preferencesSchema = new mongoose.Schema({
   age: { type: [Number], default: [] },
@@ -20,11 +22,11 @@ const preferencesSchema = new mongoose.Schema({
 const userSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
-    email: { type: String, required: true },
-    password: { type: String, required: true },
-    gender: { type: String, required: true },
+    email: { type: String, required: true, unique: true },
+    password: { type: String },
+    gender: { type: String },
     bio: { type: String },
-    dob: { type: Date, required: true },
+    dob: { type: Date },
     status: { type: String, default: "pending" },
     my_interests: { type: [String], default: [] },
     interested_gender: { type: String },
@@ -35,12 +37,7 @@ const userSchema = new mongoose.Schema(
     blockedUsers: [
       { type: mongoose.Schema.Types.ObjectId, ref: "User", default: [] },
     ],
-    photos: [
-      {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Photo",
-      },
-    ],
+    photos: [{ type: mongoose.Schema.Types.ObjectId, ref: "Photo" }],
     linkedProviders: [linkedProviderSchema],
   },
   { timestamps: true }

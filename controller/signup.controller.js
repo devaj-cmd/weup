@@ -112,44 +112,29 @@ const upload = async (req, res) => {
 
 const verifyOtherServices = async (req, res) => {
   try {
-    const { token, provider, providerId } = req.body;
+    const { token } = req.body;
 
     // Verify the token
-    const { email } = await verifyToken(token);
+    const { email, name, uid } = await verifyToken(token);
 
-    console.log(email, "two");
     // Check if the user exists in the database
-
-    // return res.sendStatus(200);
     const user = await User.findOne({ email });
+    console.log(email);
 
     if (user) {
-      // User exists, check if the provider is already linked
-      const linkedProvider = user.linkedProviders.find(
-        (p) => p.provider === provider && p.providerId === providerId
-      );
-
-      if (linkedProvider) {
-        res
-          .status(409)
-          .json({ message: "Provider already linked to the user" });
-      } else {
-        // Provider is not linked, so add it to the user's linkedProviders array
-        user.linkedProviders.push({ provider, providerId });
-        await user.save();
-        res.status(200).json({ message: "Provider linked successfully" });
-      }
+      // User already exists, prompt them to sign in
+      res.status(409).json({ message: "User already exists. Please sign in." });
     } else {
-      // User does not exist, create a new account for the provider
+      // Create a new user in the database with the necessary details
       const newUser = new User({
-        name: "Your Name",
+        name,
         email,
-        linkedProviders: [{ provider, providerId }],
       });
-      await newUser.save();
-      res
-        .status(200)
-        .json({ message: "New account created and provider linked" });
+
+      // Save the new user to the database
+      const user = await newUser.save();
+      // Send a success response
+      res.status(200).json({ message: "New user created successfully", user });
     }
   } catch (error) {
     // Token verification failed, send an error response
