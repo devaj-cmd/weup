@@ -162,7 +162,7 @@ const sigInWithOtherServices = async (req, res) => {
       res.status(200).json({ message: "User signed in successfully", user });
     } else {
       // User does not exist, handle the registration process
-      res.status(404).json({ message: "User not found. Please sign in." });
+      res.status(404).json({ message: "User not found. Please sign up." });
     }
   } catch (error) {
     res.status(401).json({ error: "Invalid token" });
