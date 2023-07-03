@@ -4,6 +4,7 @@ const { User } = require("../model/User");
 const { Photo } = require("../model/Photo");
 const uploadImage = require("../utils/upload.image");
 const { verifyToken } = require("../libs/verify.token");
+const { generateAuthTokens } = require("../utils/generate.token");
 
 const checkDuplicateEmail = async (req, res) => {
   try {
@@ -115,7 +116,7 @@ const verifyOtherServices = async (req, res) => {
     const { token } = req.body;
 
     // Verify the token
-    const { email, name, uid } = await verifyToken(token);
+    const { email, name } = await verifyToken(token);
 
     // Check if the user exists in the database
     const user = await User.findOne({ email });
@@ -137,6 +138,32 @@ const verifyOtherServices = async (req, res) => {
     }
   } catch (error) {
     // Token verification failed, send an error response
+    res.status(401).json({ error: "Invalid token" });
+  }
+};
+
+const sigInWithOtherServices = async (req, res) => {
+  try {
+    const { token } = req.body;
+
+    // Verify the token
+    const { email } = await verifyToken(token);
+
+    // Check if the user exists in the database
+    let user = await User.findOne({ email });
+
+    if (user) {
+      // User exists, sign in the user
+      // Generate a new authentication token
+      const { authToken } = generateAuthTokens(user);
+      // Set the token in the response header or body
+      res.setHeader("Authorization", authToken);
+      res.status(200).json({ message: "User signed in successfully", user });
+    } else {
+      // User does not exist, handle the registration process
+      res.status(404).json({ error: "User not found. Please sign in." });
+    }
+  } catch (error) {
     res.status(401).json({ error: "Invalid token" });
   }
 };
