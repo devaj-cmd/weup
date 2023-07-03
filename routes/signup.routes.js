@@ -9,4 +9,6 @@ signUpRoute.post("/upload", controller.upload);
 
 signUpRoute.post("/verify-token", controller.verifyOtherServices);
 
+signUpRoute.post("/other-services", controller.sigInWithOtherServices);
+
 module.exports = signUpRoute;

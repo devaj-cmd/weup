@@ -1,5 +1,4 @@
 const bcrypt = require("bcrypt");
-
 const { User } = require("../model/User");
 const { Photo } = require("../model/Photo");
 const uploadImage = require("../utils/upload.image");
@@ -157,7 +156,9 @@ const sigInWithOtherServices = async (req, res) => {
       // Generate a new authentication token
       const { authToken } = generateAuthTokens(user);
       // Set the token in the response header or body
+
       res.setHeader("Authorization", authToken);
+
       res.status(200).json({ message: "User signed in successfully", user });
     } else {
       // User does not exist, handle the registration process
@@ -173,4 +174,5 @@ module.exports = {
   registerUser,
   upload,
   verifyOtherServices,
+  sigInWithOtherServices,
 };

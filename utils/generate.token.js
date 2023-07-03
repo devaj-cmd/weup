@@ -18,7 +18,7 @@ const generateAuthTokens = (user) => {
   // Generate the refresh token
   const refreshToken = jwt.sign(
     payload,
-    process.env.MY_AUTH_REFRESH_SECRET_KEY,
+    process.env.MY_AUTH_TOKEN_REFRESH_KEY,
     {
       expiresIn: "7d",
     }
@@ -27,4 +27,4 @@ const generateAuthTokens = (user) => {
   return { authToken, refreshToken };
 };
 
-module.exports = generateAuthTokens;
+module.exports = { generateAuthTokens };
