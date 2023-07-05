@@ -18,7 +18,7 @@ const checkDuplicateEmail = async (req, res) => {
     } else {
       const otp = generateOtp(6);
       console.log(otp);
-      await nodemailer.sendConfirmationEmail(user.email, otp);
+      await nodemailer.sendConfirmationEmail(req.body.email, otp);
       // res.status(200).json({ message: "User not found" });
     }
   } catch (error) {
