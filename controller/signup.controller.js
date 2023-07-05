@@ -4,6 +4,8 @@ const { Photo } = require("../model/Photo");
 const uploadImage = require("../utils/upload.image");
 const { verifyToken } = require("../libs/verify.token");
 const { generateAuthTokens } = require("../utils/generate.token");
+const { generateOtp } = require("../utils/generate");
+const nodemailer = require("../config/nodemailer.config");
 
 const checkDuplicateEmail = async (req, res) => {
   try {
@@ -14,7 +16,10 @@ const checkDuplicateEmail = async (req, res) => {
     if (user) {
       res.status(400).json({ message: "User with email already exists." });
     } else {
-      res.status(200).json({ message: "User not found" });
+      const otp = generateOtp(6);
+      // console.log(otp);
+      await nodemailer.sendConfirmationEmail(user.email, otp);
+      // res.status(200).json({ message: "User not found" });
     }
   } catch (error) {
     res.status(500).json({ message: "Error on the server." });
@@ -132,6 +137,7 @@ const verifyOtherServices = async (req, res) => {
 
       // Save the new user to the database
       const user = await newUser.save();
+
       // Send a success response
       res.status(200).json({ message: "New user created successfully", user });
     }
