@@ -5,6 +5,11 @@ signUpRoute.post("/checkemail", controller.checkDuplicateEmail);
 
 signUpRoute.post("/register", controller.registerUser);
 
+signUpRoute.post(
+  "/register/other-services",
+  controller.registerUserWithOtherServices
+);
+
 signUpRoute.post("/upload", controller.upload);
 
 signUpRoute.post("/verify-token", controller.verifyOtherServices);

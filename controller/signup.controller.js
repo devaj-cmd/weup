@@ -62,7 +62,8 @@ const registerUser = async (req, res) => {
 
     // Hash the password
     const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword =
+      password !== "" && (await bcrypt.hash(password, saltRounds));
 
     // Create a new user with default preferences
     const newUser = new User({
@@ -95,6 +96,46 @@ const registerUser = async (req, res) => {
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const registerUserWithOtherServices = async (req, res) => {
+  const { name, email, dob, my_interests, interested_gender, gender } =
+    req.body.data;
+  const userId = req.body.id;
+
+  try {
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      {
+        name,
+        email,
+        gender,
+        dob,
+        status: "pending",
+        my_interests,
+        interested_gender,
+        preferences: {
+          age: [],
+          distance: 0,
+          ethnicity: [],
+          relationship_goals: [],
+          smoking: "",
+          drinking: "",
+        },
+      },
+      { new: true }
+    );
+
+    if (updatedUser) {
+      res
+        .status(200)
+        .json({ message: "User updated successfully", user: updatedUser });
+    } else {
+      res.status(404).json({ message: "User not found" });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Error on the server" });
   }
 };
 
@@ -231,4 +272,5 @@ module.exports = {
   verifyOtherServices,
   sigInWithOtherServices,
   verifyOtp,
+  registerUserWithOtherServices,
 };
