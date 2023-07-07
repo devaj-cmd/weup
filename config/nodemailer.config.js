@@ -9,8 +9,8 @@ const transport = nodemailer.createTransport({
   host,
   port: 465,
   secure: true,
-  debug: true,
-  logger: true,
+  // debug: true,
+  // logger: true,
   auth: {
     user,
     pass,
@@ -34,7 +34,7 @@ module.exports.sendConfirmationEmail = async (email, otp) => {
       <html>
       <body style="margin: 0; padding: 0; box-sizing: border-box;">
       <p>Hello there,</p>
-      <p>Here's the 6 digits OTP</p>
+      <p>Here's the 6 digits OTP to confirm your email</p>
       <div style="display: flex;">
       <div style="margin-right: 10px; font-weight: 600; font-size: 18px">
       <p>${otp[0]}</p>

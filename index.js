@@ -12,6 +12,8 @@ const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
 const signUpRoute = require("./routes/signup.routes");
 
+const runOTPCleanup = require("./utils/otpCleanup");
+
 const serviceAccount = {
   type: process.env.FIREBASE_SERVICE_ACCOUNT_TYPE,
   project_id: process.env.FIREBASE_PROJECT_ID,
@@ -26,6 +28,9 @@ const serviceAccount = {
   universe_domain: process.env.UNIVERSE_DOMAIN,
 };
 const app = express();
+
+// Run OTP cleanup task
+runOTPCleanup();
 
 app.use(helmet());
 
