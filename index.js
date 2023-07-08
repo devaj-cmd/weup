@@ -12,6 +12,8 @@ const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
 const signUpRoute = require("./routes/signup.routes");
 
+const signInRoute = require("./routes/signin.routes");
+
 const runOTPCleanup = require("./utils/otpCleanup");
 
 const serviceAccount = {
@@ -67,6 +69,7 @@ app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
 // routes
 app.use("/api", signUpRoute);
+app.use("/api", signInRoute);
 
 app.listen(port, () => {
   console.log("Server running on port", port);

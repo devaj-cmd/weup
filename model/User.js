@@ -13,12 +13,13 @@ const preferencesSchema = new mongoose.Schema({
 // Define the User schema
 const userSchema = new mongoose.Schema(
   {
-    name: { type: String, required: true },
-    email: { type: String, required: true, unique: true },
+    name: { type: String },
+    email: { type: String, unique: true },
     password: { type: String },
     gender: { type: String },
     bio: { type: String },
     dob: { type: Date },
+    phoneNumber: { type: String },
     status: { type: String, default: "pending" },
     my_interests: { type: [String], default: [] },
     interested_gender: { type: String },

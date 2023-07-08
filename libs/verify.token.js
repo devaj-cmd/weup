@@ -4,8 +4,8 @@ const admin = require("firebase-admin");
 const verifyToken = async (token) => {
   try {
     const decodedToken = await admin.auth().verifyIdToken(token);
-    const { email, name } = decodedToken;
-    return { email, name };
+    const { email, name, phone_number } = decodedToken;
+    return { email, name, phone_number };
   } catch (error) {
     throw error;
   }

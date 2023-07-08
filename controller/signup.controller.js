@@ -3,10 +3,10 @@ const { User } = require("../model/User");
 const { Photo } = require("../model/Photo");
 const uploadImage = require("../utils/upload.image");
 const { verifyToken } = require("../libs/verify.token");
-const { generateAuthTokens } = require("../utils/generate.token");
 const { generateOtp } = require("../utils/generate");
 const nodemailer = require("../config/nodemailer.config");
 const OTP = require("../model/Otp");
+const fetchUserPhotosAndSendResponse = require("../utils/fetch.user.photos");
 
 const checkDuplicateEmail = async (req, res) => {
   try {
@@ -42,6 +42,30 @@ const checkDuplicateEmail = async (req, res) => {
       await nodemailer.sendConfirmationEmail(email, otp);
 
       res.status(200).json({ message: "OTP sent successfully." });
+    }
+  } catch (error) {
+    res.status(500).json({ message: "Error on the server." });
+  }
+};
+
+const checkDuplicatePhoneNumber = async (req, res) => {
+  try {
+    const { phoneNumber } = req.body;
+    const formattedPhoneNumber = `+${phoneNumber}`;
+
+    // Check if the phone number already exists in the database
+    const existingUser = await User.findOne({
+      phoneNumber: formattedPhoneNumber,
+    });
+
+    if (existingUser) {
+      // User with the phone number already exists
+      res
+        .status(400)
+        .json({ message: "User with phone number already exists." });
+    } else {
+      // Phone number is unique
+      res.status(200).json({ message: "Phone number is available." });
     }
   } catch (error) {
     res.status(500).json({ message: "Error on the server." });
@@ -100,8 +124,15 @@ const registerUser = async (req, res) => {
 };
 
 const registerUserWithOtherServices = async (req, res) => {
-  const { name, email, dob, my_interests, interested_gender, gender } =
-    req.body.data;
+  const {
+    name,
+    email,
+    dob,
+    my_interests,
+    interested_gender,
+    gender,
+    phoneNumber,
+  } = req.body.data;
   const userId = req.body.id;
 
   try {
@@ -115,6 +146,7 @@ const registerUserWithOtherServices = async (req, res) => {
         status: "pending",
         my_interests,
         interested_gender,
+        phoneNumber,
         preferences: {
           age: [],
           distance: 0,
@@ -162,16 +194,7 @@ const upload = async (req, res) => {
     // Fetch the updated user from the database
     const userToSend = await User.findById(userId).select("-password");
 
-    // Fetch the photos associated with the user
-    const photosToAdd = await Photo.find({ user: userId });
-
-    // Assign the fetched photos to the user object
-    userToSend.photos = photosToAdd;
-
-    const photoToSend = userToSend.photos.map((photo) => photo.imageUrl);
-    const { photos, ...userDetails } = userToSend.toObject();
-
-    res.status(200).send({ photos: photoToSend, ...userDetails }); // Send the updated user object back as the response
+    fetchUserPhotosAndSendResponse(userToSend, res);
   } catch (error) {
     console.log(error);
     res.status(500).send("Error uploading photos: " + error);
@@ -183,57 +206,69 @@ const verifyOtherServices = async (req, res) => {
     const { token } = req.body;
 
     // Verify the token
-    const { email, name } = await verifyToken(token);
+    const { email, name, phone_number } = await verifyToken(token);
 
-    // Check if the user exists in the database
-    const user = await User.findOne({ email });
+    // console.log({ email, name, phoneNumber });
 
-    if (user) {
-      // User already exists, prompt them to sign in
-      res.status(409).json({ message: "User already exists. Please sign in." });
-    } else {
-      // Create a new user in the database with the necessary details
-      const newUser = new User({
-        name,
-        email,
+    if (email) {
+      // Check if the user exists in the database by email
+      const userByEmail = await User.findOne({ email });
+
+      if (userByEmail) {
+        // User already exists, prompt them to sign in
+        res
+          .status(409)
+          .json({ message: "User already exists. Please sign in." });
+      } else {
+        // Create a new user in the database with the necessary details
+        const newUser = new User({
+          name,
+          email,
+        });
+
+        // Save the new user to the database
+        const createdUser = await newUser.save();
+
+        // Send a success response
+        res.status(200).json({
+          message: "New user created successfully",
+          user: createdUser,
+        });
+      }
+    } else if (phone_number) {
+      // Check if the user exists in the database by phoneNumber
+      const userByPhoneNumber = await User.findOne({
+        phoneNumber: phone_number,
       });
 
-      // Save the new user to the database
-      const user = await newUser.save();
+      if (userByPhoneNumber) {
+        // User already exists, prompt them to sign in
+        res
+          .status(409)
+          .json({ message: "User already exists. Please sign in." });
+      } else {
+        // Create a new user in the database with the necessary details
+        const newUser = new User({
+          phoneNumber: phone_number,
+        });
 
-      // Send a success response
-      res.status(200).json({ message: "New user created successfully", user });
+        // Save the new user to the database
+        const createdUser = await newUser.save();
+
+        // Send a success response
+        res.status(200).json({
+          message: "New user created successfully",
+          user: createdUser,
+        });
+      }
+    } else {
+      // Invalid token without email or phoneNumber
+      res
+        .status(400)
+        .json({ error: "Invalid token. Please provide valid credentials." });
     }
   } catch (error) {
     // Token verification failed, send an error response
-    res.status(401).json({ error: "Invalid token" });
-  }
-};
-
-const sigInWithOtherServices = async (req, res) => {
-  try {
-    const { token } = req.body;
-
-    // Verify the token
-    const { email } = await verifyToken(token);
-
-    // Check if the user exists in the database
-    let user = await User.findOne({ email });
-
-    if (user) {
-      // User exists, sign in the user
-      // Generate a new authentication token
-      const { authToken } = generateAuthTokens(user);
-      // Set the token in the response header or body
-
-      res.setHeader("Authorization", authToken);
-
-      res.status(200).json({ message: "User signed in successfully", user });
-    } else {
-      // User does not exist, handle the registration process
-      res.status(404).json({ message: "User not found. Please sign up." });
-    }
-  } catch (error) {
     res.status(401).json({ error: "Invalid token" });
   }
 };
@@ -270,7 +305,7 @@ module.exports = {
   registerUser,
   upload,
   verifyOtherServices,
-  sigInWithOtherServices,
   verifyOtp,
+  checkDuplicatePhoneNumber,
   registerUserWithOtherServices,
 };
