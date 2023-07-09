@@ -3,9 +3,7 @@ const { User } = require("../model/User");
 const { Photo } = require("../model/Photo");
 const uploadImage = require("../utils/upload.image");
 const { verifyToken } = require("../libs/verify.token");
-const { generateOtp } = require("../utils/generate");
-const nodemailer = require("../config/nodemailer.config");
-const OTP = require("../model/Otp");
+const { generateAndSendOTP, verifyOTP } = require("../utils/generate");
 const fetchUserPhotosAndSendResponse = require("../utils/fetch.user.photos");
 
 const checkDuplicateEmail = async (req, res) => {
@@ -20,26 +18,7 @@ const checkDuplicateEmail = async (req, res) => {
     if (existingUser) {
       res.status(400).json({ message: "User with email already exists." });
     } else {
-      const otp = generateOtp(6);
-      const expirationTime = new Date().getTime() + 15 * 60 * 1000; // Set OTP expiration to 15 minutes from now
-
-      // Check if an OTP entry with the email already exists
-      let otpEntry = await OTP.findOne({ email });
-
-      if (!otpEntry) {
-        // If no OTP entry exists, create a new one
-        otpEntry = new OTP({ email, otp, expiresAt: expirationTime });
-      } else {
-        // If an OTP entry already exists, update it with a new OTP and expiration time
-        otpEntry.otp = otp;
-        otpEntry.expiresAt = expirationTime;
-      }
-
-      // Save the OTP entry
-      await otpEntry.save();
-
-      // Send the OTP to the user's email
-      await nodemailer.sendConfirmationEmail(email, otp);
+      await generateAndSendOTP(email);
 
       res.status(200).json({ message: "OTP sent successfully." });
     }
@@ -277,26 +256,12 @@ const verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    const currentTime = new Date();
+    await verifyOTP(email, otp);
 
-    // Find the OTP entry for the provided email and OTP
-    const otpEntry = await OTP.findOne({ email, otp });
-
-    if (!otpEntry) {
-      res.status(400).json({ message: "Invalid OTP." });
-    } else if (otpEntry.expiresAt < currentTime) {
-      // Check if the OTP has expired
-      res.status(400).json({ message: "OTP has expired. Generate a new one" });
-    } else {
-      // OTP verification successful
-      // Delete the OTP entry since it is no longer needed
-      await OTP.deleteOne({ email, otp });
-
-      res.status(200).json({ message: "OTP verification successful." });
-    }
+    res.status(200).json({ message: "OTP verification successful." });
   } catch (error) {
     console.log(error);
-    res.status(500).json({ message: "Error on the server." });
+    res.status(400).json({ message: error.message });
   }
 };
 

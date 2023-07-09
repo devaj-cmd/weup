@@ -1,7 +1,9 @@
 const bcrypt = require("bcrypt");
 const { User } = require("../model/User");
+
 const { verifyToken } = require("../libs/verify.token");
 const fetchUserPhotosAndSendResponse = require("../utils/fetch.user.photos");
+const { generateAndSendOTP } = require("../utils/generate");
 
 const signInWithEmail = async (req, res) => {
   const { email, password } = req.body;
@@ -17,8 +19,12 @@ const signInWithEmail = async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "Email or Password is invalid" });
     }
+
+    if (user && !user.password) {
+      return res.status(401).json({ message: "Email or Password is invalid" });
+    }
     // Compare the provided password with the hashed password in the database
-    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    const isPasswordMatch = await bcrypt.compare(password, user?.password);
 
     if (!isPasswordMatch) {
       return res.status(404).json({ message: "Email or Password is invalid" });
@@ -85,8 +91,33 @@ const verifyPhoneNumber = async (req, res) => {
   }
 };
 
+const checkEmail = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    // Check if the email exists in the database
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "Email not found" });
+    }
+
+    await generateAndSendOTP(email);
+
+    res.status(200).json({ message: "OTP sent successfully." });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: "Error on the server" });
+  }
+};
+
+module.exports = {
+  checkEmail,
+};
+
 module.exports = {
   signInWithEmail,
   sigInWithOtherServices,
   verifyPhoneNumber,
+  checkEmail,
 };
