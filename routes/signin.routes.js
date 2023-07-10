@@ -5,6 +5,10 @@ signInRoute.post("/signin", controller.signInWithEmail);
 
 signInRoute.post("/verify-number", controller.verifyPhoneNumber);
 
+signInRoute.post("/verify-email", controller.checkEmail);
+
+signInRoute.post("/update-password", controller.updatePassword);
+
 signInRoute.post("/other-services", controller.sigInWithOtherServices);
 
 module.exports = signInRoute;

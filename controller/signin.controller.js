@@ -102,9 +102,33 @@ const checkEmail = async (req, res) => {
       return res.status(404).json({ message: "Email not found" });
     }
 
-    await generateAndSendOTP(email);
+    await generateAndSendOTP(email, user.name);
 
     res.status(200).json({ message: "OTP sent successfully." });
+  } catch (error) {
+    res.status(500).json({ message: "Error on the server" });
+  }
+};
+
+const updatePassword = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Find the user by email
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Generate a new hash for the new password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Update the user's password in the database
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password updated successfully" });
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Error on the server" });
@@ -112,12 +136,9 @@ const checkEmail = async (req, res) => {
 };
 
 module.exports = {
-  checkEmail,
-};
-
-module.exports = {
   signInWithEmail,
   sigInWithOtherServices,
   verifyPhoneNumber,
   checkEmail,
+  updatePassword,
 };

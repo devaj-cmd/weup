@@ -9,7 +9,7 @@ const generateOtp = (num = 4) => {
   return otp;
 };
 
-const generateAndSendOTP = async (email) => {
+const generateAndSendOTP = async (email, name) => {
   const otp = generateOtp(6);
   const expirationTime = new Date().getTime() + 15 * 60 * 1000; // Set OTP expiration to 15 minutes from now
 
@@ -29,7 +29,9 @@ const generateAndSendOTP = async (email) => {
   await otpEntry.save();
 
   // Send the OTP to the user's email
-  await nodemailer.sendConfirmationEmail(email, otp);
+  name
+    ? await nodemailer.sendResetPasswordEmail(name, email, otp)
+    : await nodemailer.sendConfirmationEmail(email, otp);
 };
 
 const verifyOTP = async (email, otp) => {
