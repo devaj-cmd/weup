@@ -5,6 +5,9 @@ const uploadImage = require("../utils/upload.image");
 const { verifyToken } = require("../libs/verify.token");
 const { generateAndSendOTP, verifyOTP } = require("../utils/generate");
 const fetchUserPhotosAndSendResponse = require("../utils/fetch.user.photos");
+const createLogger = require("../utils/logger");
+
+const logger = createLogger("error.log");
 
 const checkDuplicateEmail = async (req, res) => {
   try {
@@ -23,6 +26,7 @@ const checkDuplicateEmail = async (req, res) => {
       res.status(200).json({ message: "OTP sent successfully." });
     }
   } catch (error) {
+    logger.error("Error occurred:", error);
     res.status(500).json({ message: "Error on the server." });
   }
 };
@@ -47,6 +51,7 @@ const checkDuplicatePhoneNumber = async (req, res) => {
       res.status(200).json({ message: "Phone number is available." });
     }
   } catch (error) {
+    logger.error("Error occurred:", error);
     res.status(500).json({ message: "Error on the server." });
   }
 };
@@ -101,7 +106,7 @@ const registerUser = async (req, res) => {
     // Return the user object without the password
     res.status(201).json({ message: "User registered successfully", user });
   } catch (error) {
-    console.log(error);
+    logger.error("Error occurred:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -154,7 +159,7 @@ const registerUserWithOtherServices = async (req, res) => {
       res.status(404).json({ message: "User not found" });
     }
   } catch (error) {
-    console.log(error);
+    logger.error("Error occurred:", error);
     res.status(500).json({ message: "Error on the server" });
   }
 };
@@ -184,7 +189,7 @@ const upload = async (req, res) => {
 
     fetchUserPhotosAndSendResponse(userToSend, res);
   } catch (error) {
-    console.log(error);
+    logger.error("Error occurred:", error);
     res.status(500).send("Error uploading photos: " + error);
   }
 };
@@ -256,6 +261,7 @@ const verifyOtherServices = async (req, res) => {
         .json({ error: "Invalid token. Please provide valid credentials." });
     }
   } catch (error) {
+    logger.error("Error occurred:", error);
     // Token verification failed, send an error response
     res.status(401).json({ error: "Invalid token" });
   }
@@ -269,7 +275,7 @@ const verifyOtp = async (req, res) => {
 
     res.status(200).json({ message: "OTP verification successful." });
   } catch (error) {
-    console.log(error);
+    logger.error("Error occurred:", error);
     res.status(400).json({ message: error.message });
   }
 };

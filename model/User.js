@@ -27,6 +27,32 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+userSchema.pre("save", async function (next) {
+  // Create a new Preference document
+  const preference = new Preference({
+    age: [],
+    distance: 0,
+    ethnicity: [],
+    relationship_goals: [],
+    smoking: "",
+    drinking: "",
+    education: "",
+    height: 0,
+    kids: "",
+    religion: "",
+  });
+
+  try {
+    // Save the preference document
+    const savedPreference = await preference.save();
+    // Assign the preference ObjectId to the user's preferences field
+    this.preferences = savedPreference._id;
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Create the User model
 const User = mongoose.model("User", userSchema);
 
