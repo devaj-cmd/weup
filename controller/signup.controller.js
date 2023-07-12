@@ -79,12 +79,16 @@ const registerUser = async (req, res) => {
       my_interests,
       interested_gender,
       preferences: {
-        age: [],
+        age: [], // Update with the desired default age range
         distance: 0,
-        ethnicity: [],
-        relationship_goals: [],
-        smoking: "",
-        drinking: "",
+        ethnicity: [], // Update with the desired default ethnicities
+        relationship_goals: [], // Update with the desired default relationship goals
+        smoking: "", // Update with the desired default smoking preference
+        drinking: "", // Update with the desired default drinking preference
+        education: "", // Add the default education field
+        height: 0, // Add the default height field
+        kids: "", // Add the default kids field
+        religion: "", // Add the default religion field
       },
     });
 
@@ -127,12 +131,16 @@ const registerUserWithOtherServices = async (req, res) => {
         interested_gender,
         phoneNumber,
         preferences: {
-          age: [],
+          age: [], // Update with the desired default age range
           distance: 0,
-          ethnicity: [],
-          relationship_goals: [],
-          smoking: "",
-          drinking: "",
+          ethnicity: [], // Update with the desired default ethnicities
+          relationship_goals: [], // Update with the desired default relationship goals
+          smoking: "", // Update with the desired default smoking preference
+          drinking: "", // Update with the desired default drinking preference
+          education: "", // Add the default education field
+          height: 0, // Add the default height field
+          kids: "", // Add the default kids field
+          religion: "", // Add the default religion field
         },
       },
       { new: true }

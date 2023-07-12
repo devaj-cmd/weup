@@ -17,17 +17,45 @@ const preferenceSchema = new mongoose.Schema(
         required: true,
       },
     },
+    distance: {
+      type: Number,
+      required: true,
+    },
+    drinking: {
+      type: String,
+      required: true,
+    },
+    education: {
+      type: String,
+      required: true,
+    },
+    ethnicity: {
+      type: String,
+      required: true,
+    },
     gender: {
       type: String,
-      enum: ["male", "female", "other"],
+      enum: ["male", "female"],
       required: true,
     },
-    location: {
+    height: {
+      type: Number,
+      required: true,
+    },
+    kids: {
       type: String,
       required: true,
     },
-    interests: {
-      type: [String],
+    relationship_goals: {
+      type: String,
+      required: true,
+    },
+    religion: {
+      type: String,
+      required: true,
+    },
+    smoking: {
+      type: String,
       required: true,
     },
   },
