@@ -1,14 +1,6 @@
 const mongoose = require("mongoose");
 
-// Define the Preferences schema
-const preferencesSchema = new mongoose.Schema({
-  age: { type: [Number], default: [] },
-  distance: { type: Number, default: 0 },
-  ethnicity: { type: [String], default: [] },
-  relationship_goals: { type: [String], default: [] },
-  smoking: { type: String, default: "" },
-  drinking: { type: String, default: "" },
-});
+const Preference = require("./Preference");
 
 // Define the User schema
 const userSchema = new mongoose.Schema(
@@ -23,7 +15,7 @@ const userSchema = new mongoose.Schema(
     status: { type: String, default: "pending" },
     my_interests: { type: [String], default: [] },
     interested_gender: { type: String },
-    preferences: { type: preferencesSchema, default: {} },
+    preferences: { type: mongoose.Schema.Types.ObjectId, ref: "Preference" },
     reports: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Report", default: [] },
     ],
