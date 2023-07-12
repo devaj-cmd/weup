@@ -7,18 +7,10 @@ const preferenceSchema = new mongoose.Schema(
       ref: "User",
       // No longer required
     },
-    age: {
-      min: {
-        type: Number,
-        // No longer required
-      },
-      max: {
-        type: Number,
-        // No longer required
-      },
-    },
+    age: { type: [Number], default: [] },
     distance: {
       type: Number,
+      default: 0,
       // No longer required
     },
     drinking: {
@@ -40,6 +32,7 @@ const preferenceSchema = new mongoose.Schema(
     },
     height: {
       type: Number,
+      default: 0,
       // No longer required
     },
     kids: {

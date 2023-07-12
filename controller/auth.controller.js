@@ -90,20 +90,20 @@ const blockUser = async (req, res) => {
 
 const updateUserPreference = async (req, res) => {
   try {
-    const { userId, preferences } = req.body;
+    const { loggedInUserId, preferences } = req.body;
 
     // Find the user by userId
-    const user = await User.findById(userId);
+    const loggedInUser = await User.findById(loggedInUserId);
 
-    if (!user) {
+    if (!loggedInUser) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Update the user's preferences
-    user.preferences = preferences;
+    loggedInUser.preferences = preferences;
 
     // Save the updated user to the database
-    const updatedUser = await user.save();
+    const updatedUser = await loggedInUser.save();
 
     // Remove the password field from the user object
     const { password, ...sanitizedUser } = updatedUser.toObject();
