@@ -5,58 +5,58 @@ const preferenceSchema = new mongoose.Schema(
     user: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      // No longer required
     },
     age: {
       min: {
         type: Number,
-        required: true,
+        // No longer required
       },
       max: {
         type: Number,
-        required: true,
+        // No longer required
       },
     },
     distance: {
       type: Number,
-      required: true,
+      // No longer required
     },
     drinking: {
       type: String,
-      required: true,
+      // No longer required
     },
     education: {
       type: String,
-      required: true,
+      // No longer required
     },
     ethnicity: {
       type: String,
-      required: true,
+      // No longer required
     },
     gender: {
       type: String,
       enum: ["male", "female"],
-      required: true,
+      // No longer required
     },
     height: {
       type: Number,
-      required: true,
+      // No longer required
     },
     kids: {
       type: String,
-      required: true,
+      // No longer required
     },
     relationship_goals: {
       type: String,
-      required: true,
+      // No longer required
     },
     religion: {
       type: String,
-      required: true,
+      // No longer required
     },
     smoking: {
       type: String,
-      required: true,
+      // No longer required
     },
   },
   {
