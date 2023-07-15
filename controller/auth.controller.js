@@ -22,17 +22,6 @@ const getAllUsers = async (req, res) => {
     // Retrieve all users from the database
     const allUsers = await User.find();
 
-    // Calculate similarity scores for each user and exclude blocked users
-    // const userScores = allUsers
-    //   .filter((user) => !blockedUserIds.includes(user._id))
-    //   .map((user) => {
-    //     const score = calculateSimilarity(
-    //       loggedInUser.preferences,
-    //       user.preferences
-    //     );
-    //     return { user, score: score || 0 };
-    //   });
-
     // Filter out blocked and logged-in user from allUsers
     const filteredUsers = allUsers
       .filter(
@@ -41,8 +30,15 @@ const getAllUsers = async (req, res) => {
           user._id.toString() !== loggedInUserId
       )
       .map((user) => {
-        console.log(user.preferences, loggedInUser.preferences);
+        const score = calculateSimilarity(loggedInUser, user);
+
+        // Remove the password field from the user object
+        const { password, ...sanitizedUser } = user.toObject();
+        return { user: sanitizedUser, score: score || 0 };
       });
+
+    // Sort the users based on their similarity scores in descending order
+    filteredUsers.sort((a, b) => b.score - a.score);
 
     const paginatedUsers = paginateResults(
       filteredUsers,
@@ -100,7 +96,10 @@ const updateUserPreference = async (req, res) => {
     }
 
     // Update the user's preferences
-    loggedInUser.preferences = preferences;
+    loggedInUser.preferences = {
+      ...loggedInUser.preferences,
+      ...preferences,
+    };
 
     // Save the updated user to the database
     const updatedUser = await loggedInUser.save();

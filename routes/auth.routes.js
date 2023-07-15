@@ -7,6 +7,6 @@ authRoute.post("/user/block", controller.blockUser);
 
 authRoute.post("/user/unblock", controller.unblockUser);
 
-authRoute.put("/users/preference", controller.updateUserPreference);
+authRoute.put("/user/preference", controller.updateUserPreference);
 
 module.exports = authRoute;

@@ -31,45 +31,84 @@ const calculateAgeSimilarity = (loggedInUserAge, otherUserAge) => {
 
 // Function to calculate similarity score based on user preferences
 const calculateSimilarity = (loggedInUser, otherUser) => {
+  const loggedInUserPreference = loggedInUser.preferences;
+  const otherUserPreference = otherUser.preferences;
   let score = 0;
 
   // Age similarity
-  const ageScore = calculateAgeSimilarity(loggedInUser.age, otherUser.age);
+  const ageScore = calculateAgeSimilarity(
+    loggedInUserPreference.age,
+    otherUserPreference.age
+  );
   score += ageScore;
 
   // Height similarity
-  const heightDiff = Math.abs(loggedInUser.height - otherUser.height);
+  const heightDiff = Math.abs(
+    loggedInUserPreference.height - otherUserPreference.height
+  );
   const heightScore = heightDiff <= 5 ? 1 : 0;
   score += heightScore;
 
   // Distance similarity
-  const distanceDiff = Math.abs(loggedInUser.distance - otherUser.distance);
+  const distanceDiff = Math.abs(
+    loggedInUserPreference.distance - otherUserPreference.distance
+  );
   const distanceScore = distanceDiff <= 10 ? 1 : 0;
   score += distanceScore;
 
   // Ethnicity similarity
-  const ethnicityScore = loggedInUser.ethnicity === otherUser.ethnicity ? 1 : 0;
+  const ethnicityScore =
+    loggedInUserPreference.ethnicity === otherUserPreference.ethnicity ? 1 : 0;
   score += ethnicityScore;
 
   // Relationship goals similarity
   const relationshipGoalsScore =
-    loggedInUser.relationshipGoals === otherUser.relationshipGoals ? 1 : 0;
+    loggedInUserPreference.relationshipGoals ===
+    otherUserPreference.relationshipGoals
+      ? 1
+      : 0;
   score += relationshipGoalsScore;
 
   // Smoking similarity
-  const smokingScore = loggedInUser.smoking === otherUser.smoking ? 1 : 0;
+  const smokingScore =
+    loggedInUserPreference.smoking === otherUserPreference.smoking ? 1 : 0;
   score += smokingScore;
 
   // Drinking similarity
-  const drinkingScore = loggedInUser.drinking === otherUser.drinking ? 1 : 0;
+  const drinkingScore =
+    loggedInUserPreference.drinking === otherUserPreference.drinking ? 1 : 0;
   score += drinkingScore;
 
   // Interested gender similarity
   const interestedGenderScore =
-    loggedInUser.interested_gender === otherUser.gender ? 1 : 0;
+    loggedInUserPreference.interested_gender === otherUserPreference.gender
+      ? 1
+      : 0;
   score += interestedGenderScore;
 
-  return score;
+  const interestsScore = calculateInterestsSimilarity(
+    loggedInUser.my_interests,
+    otherUser.my_interests
+  );
+
+  score += interestsScore;
+
+  return parseFloat(score.toFixed(2)); //
+};
+
+const calculateInterestsSimilarity = (
+  loggedInUserInterests,
+  otherUserInterests
+) => {
+  const commonInterests = loggedInUserInterests.filter((interest) =>
+    otherUserInterests.includes(interest)
+  );
+
+  const similarity =
+    commonInterests.length /
+    Math.max(loggedInUserInterests.length, otherUserInterests.length);
+
+  return similarity;
 };
 
 module.exports = {
