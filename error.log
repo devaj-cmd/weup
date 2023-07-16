@@ -1,0 +1,1 @@
+{"level":"error","message":"Error occurred: Invalid OTP.","stack":"Error: Invalid OTP.\n    at verifyOTP (/Users/devaj/Desktop/serverup/utils/generate.js:44:11)\n    at runMicrotasks (<anonymous>)\n    at processTicksAndRejections (node:internal/process/task_queues:96:5)\n    at async verifyOtp (/Users/devaj/Desktop/serverup/controller/signup.controller.js:250:5)"}
