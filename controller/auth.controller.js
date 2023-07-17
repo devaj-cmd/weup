@@ -40,27 +40,8 @@ const getAllUsers = async (req, res) => {
     // Sort the users based on their similarity scores in descending order
     filteredUsers.sort((a, b) => b.score - a.score);
 
-    const filteredUsersWithOffset = filteredUsers.map((user, index) => {
-      const offsetProperties = {
-        coord: [0, 0],
-        offset: {
-          x: 0,
-          y: 0,
-        },
-        direction: "",
-        button: "",
-      };
-
-      const userWithOffset = {
-        ...user,
-        ...offsetProperties,
-      };
-
-      return userWithOffset;
-    });
-
     const paginatedUsers = paginateResults(
-      filteredUsersWithOffset,
+      filteredUsers,
       sanitizedPage,
       sanitizedLimit
     );
