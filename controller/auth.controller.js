@@ -1,5 +1,6 @@
 const { User } = require("../model/User");
 const { calculateSimilarity, paginateResults } = require("../utils");
+const { fetchUserPhotos } = require("../utils/fetch.user.photos");
 
 const getAllUsers = async (req, res) => {
   try {
