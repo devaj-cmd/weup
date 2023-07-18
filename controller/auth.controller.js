@@ -32,7 +32,7 @@ const getAllUsers = async (req, res) => {
       .map((user) => {
         const score = calculateSimilarity(loggedInUser, user);
 
-        // Remove the password field from the user object
+        // Remove the password field from the user object sent
         const { password, ...sanitizedUser } = user.toObject();
         return { user: sanitizedUser, score: score || 0 };
       });
