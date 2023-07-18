@@ -31,12 +31,14 @@ const getAllUsers = async (req, res) => {
       )
       .map((user) => {
         const score = calculateSimilarity(loggedInUser, user);
-        const newUser = fetchUserPhotos(user);
-        // Find user photo
+        const photos = fetchUserPhotos(user); // Fetch the user photos using the fetchUserPhotos function
 
         // Remove the password field from the user object sent
-        const { password, ...sanitizedUser } = newUser.toObject();
-        return { user: sanitizedUser, score: score || 0 };
+        const { password, ...sanitizedUser } = user.toObject();
+
+        // Include the photos in the sanitized user object
+        const userWithPhotos = { ...sanitizedUser, photos };
+        return { user: userWithPhotos, score: score || 0 };
       });
 
     // Sort the users based on their similarity scores in descending order
