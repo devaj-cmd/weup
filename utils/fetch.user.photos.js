@@ -23,4 +23,14 @@ const fetchUserPhotosAndSendResponse = async (user, res) => {
   });
 };
 
-module.exports = fetchUserPhotosAndSendResponse;
+const fetchUserPhotos = async (user) => {
+  // Fetch the photos associated with the user
+  const photosToAdd = await Photo.find({ user: user._id });
+
+  // Assign the fetched photos to the user object
+  user.photos = photosToAdd;
+
+  // Extract and return the photo URLs for the user
+  return user.photos.map((photo) => photo.imageUrl);
+};
+module.exports = { fetchUserPhotosAndSendResponse, fetchUserPhotos };

@@ -4,7 +4,9 @@ const { Photo } = require("../model/Photo");
 const uploadImage = require("../utils/upload.image");
 const { verifyToken } = require("../libs/verify.token");
 const { generateAndSendOTP, verifyOTP } = require("../utils/generate");
-const fetchUserPhotosAndSendResponse = require("../utils/fetch.user.photos");
+const {
+  fetchUserPhotosAndSendResponse,
+} = require("../utils/fetch.user.photos");
 const createLogger = require("../utils/logger");
 
 const logger = createLogger("error.log");

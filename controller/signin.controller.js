@@ -2,7 +2,9 @@ const bcrypt = require("bcrypt");
 const { User } = require("../model/User");
 
 const { verifyToken } = require("../libs/verify.token");
-const fetchUserPhotosAndSendResponse = require("../utils/fetch.user.photos");
+const {
+  fetchUserPhotosAndSendResponse,
+} = require("../utils/fetch.user.photos");
 const { generateAndSendOTP } = require("../utils/generate");
 
 const signInWithEmail = async (req, res) => {

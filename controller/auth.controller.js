@@ -31,9 +31,11 @@ const getAllUsers = async (req, res) => {
       )
       .map((user) => {
         const score = calculateSimilarity(loggedInUser, user);
+        const newUser = fetchUserPhotos(user);
+        // Find user photo
 
         // Remove the password field from the user object sent
-        const { password, ...sanitizedUser } = user.toObject();
+        const { password, ...sanitizedUser } = newUser.toObject();
         return { user: sanitizedUser, score: score || 0 };
       });
 

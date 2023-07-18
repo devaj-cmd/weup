@@ -8,6 +8,8 @@ const admin = require("firebase-admin");
 
 const helmet = require("helmet");
 
+// TODO RATE LIMIT
+
 const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
 
 const signUpRoute = require("./routes/signup.routes");
