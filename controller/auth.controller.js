@@ -24,29 +24,38 @@ const getAllUsers = async (req, res) => {
     const allUsers = await User.find();
 
     // Filter out blocked and logged-in user from allUsers
-    const filteredUsers = allUsers
-      .filter(
-        (user) =>
-          !blockedUserIds.includes(user._id) &&
-          user._id.toString() !== loggedInUserId
-      )
-      .map((user) => {
-        const score = calculateSimilarity(loggedInUser, user);
-        const photos = fetchUserPhotos(user); // Fetch the user photos using the fetchUserPhotos function
+    const filteredUsers = allUsers.filter(
+      (user) =>
+        !blockedUserIds.includes(user._id) &&
+        user._id.toString() !== loggedInUserId
+    );
 
-        // Remove the password field from the user object sent
-        const { password, ...sanitizedUser } = user.toObject();
+    // Calculate similarity in batches of 10 users
+    const batchSize = 10;
+    const userBatches = [];
+    for (let i = 0; i < filteredUsers.length; i += batchSize) {
+      const batch = filteredUsers.slice(i, i + batchSize);
+      const batchWithScores = await Promise.all(
+        batch.map(async (user) => {
+          const score = calculateSimilarity(loggedInUser, user);
+          const photos = await fetchUserPhotos(user);
+          const { password, ...sanitizedUser } = user.toObject();
+          const userWithPhotos = { ...sanitizedUser, photos };
+          return { user: userWithPhotos, score: score || 0 };
+        })
+      );
+      userBatches.push(batchWithScores);
+    }
 
-        // Include the photos in the sanitized user object
-        const userWithPhotos = { ...sanitizedUser, photos };
-        return { user: userWithPhotos, score: score || 0 };
-      });
+    // Flatten the array of batches into a single array
+    const flattenedUsers = userBatches.flat();
 
     // Sort the users based on their similarity scores in descending order
-    filteredUsers.sort((a, b) => b.score - a.score);
+    flattenedUsers.sort((a, b) => b.score - a.score);
 
+    // Paginate the results
     const paginatedUsers = paginateResults(
-      filteredUsers,
+      flattenedUsers,
       sanitizedPage,
       sanitizedLimit
     );
