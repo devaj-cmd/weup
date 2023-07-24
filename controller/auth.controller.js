@@ -1,6 +1,23 @@
 const { User } = require("../model/User");
+const Like = require("../model/Like");
+const Dislike = require("../model/Dislike");
+const Match = require("../model/Matches");
+const Favorite = require("../model/Favorite");
+const Message = require("../model/Message");
+
 const { calculateSimilarity, paginateResults } = require("../utils");
 const { fetchUserPhotos } = require("../utils/fetch.user.photos");
+const pusher = require("../libs/pusher");
+
+const getOtherUser = async (req, res) => {
+  try {
+    const user = await User.findById({ _id: req.params.id });
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error("Error getting user:", error);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+};
 
 const getAllUsers = async (req, res) => {
   try {
@@ -20,15 +37,50 @@ const getAllUsers = async (req, res) => {
     // Get the IDs of blocked users
     const blockedUserIds = loggedInUser.blockedUsers;
 
-    // Retrieve all users from the database
-    const allUsers = await User.find();
+    // Use the MongoDB aggregation pipeline to filter out blocked, liked, disliked, and favorite users
+    const filteredUsers = await User.aggregate([
+      // Left join with the Likes collection to get liked users
+      {
+        $lookup: {
+          from: "likes",
+          localField: "_id",
+          foreignField: "likedUserId",
+          as: "likedUser",
+        },
+      },
+      // Left join with the Dislikes collection to get disliked users
+      {
+        $lookup: {
+          from: "dislikes",
+          localField: "_id",
+          foreignField: "dislikedUserId",
+          as: "dislikedUser",
+        },
+      },
 
-    // Filter out blocked and logged-in user from allUsers
-    const filteredUsers = allUsers.filter(
-      (user) =>
-        !blockedUserIds.includes(user._id) &&
-        user._id.toString() !== loggedInUserId
-    );
+      // Match all users except the blocked users and the loggedInUser
+      {
+        $match: {
+          _id: { $nin: [...blockedUserIds, loggedInUser._id] },
+          "likedUser.loggedInUserId": { $ne: loggedInUser._id },
+          "dislikedUser.loggedInUserId": { $ne: loggedInUser._id },
+        },
+      },
+      // Project the desired fields from the user document
+      {
+        $project: {
+          name: 1,
+          email: 1,
+          status: 1,
+          my_interests: 1,
+          dob: 1,
+          gender: 1,
+          interested_gender: 1,
+          phoneNumber: 1,
+          preferences: 1,
+        },
+      },
+    ]);
 
     // Calculate similarity in batches of 10 users
     const batchSize = 10;
@@ -39,7 +91,7 @@ const getAllUsers = async (req, res) => {
         batch.map(async (user) => {
           const score = calculateSimilarity(loggedInUser, user);
           const photos = await fetchUserPhotos(user);
-          const { password, ...sanitizedUser } = user.toObject();
+          const { password, ...sanitizedUser } = user;
           const userWithPhotos = { ...sanitizedUser, photos };
           return { user: userWithPhotos, score: score || 0 };
         })
@@ -149,4 +201,411 @@ const unblockUser = async (req, res) => {
   }
 };
 
-module.exports = { getAllUsers, blockUser, updateUserPreference, unblockUser };
+const userLikes = async (req, res) => {
+  try {
+    const { loggedInUserId, likedUserId } = req.body;
+
+    // Check if the like relationship already exists
+    const existingLike = await Like.findOne({
+      loggedInUserId,
+      likedUserId,
+    });
+
+    if (existingLike) {
+      // If the like relationship exists, send a response indicating that it's already liked
+      return res.status(200).json({ message: "Already liked!" });
+    }
+
+    // If the like relationship doesn't exist, create it (like)
+    const like = await Like.create({
+      loggedInUserId,
+      likedUserId,
+    });
+
+    // Check if there's a match
+    const existingMatch = await Like.findOne({
+      loggedInUserId: likedUserId,
+      likedUserId: loggedInUserId,
+    });
+
+    if (existingMatch) {
+      // Create a new Match document if a match is found
+      await Match.create({
+        loggedInUserId,
+        userId: likedUserId, // Use userId instead of likedUserId
+      });
+
+      // Send a response indicating that it's a match
+      return res.status(200).json({ message: "It's a match!" });
+    }
+
+    // Send a response indicating a successful like
+    res.status(200).json({ message: "Liked successfully!", like });
+  } catch (error) {
+    console.error("Error handling userLikes:", error);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+};
+
+const userFavorites = async (req, res) => {
+  try {
+    const { loggedInUserId, favoriteUserId } = req.body;
+
+    // Check if the favorite relationship already exists
+    const existingFavorite = await Favorite.findOne({
+      loggedInUserId,
+      favoriteUserId,
+    });
+
+    if (existingFavorite) {
+      return res.status(200).json({ message: "User is already favorited." });
+    }
+
+    // If the favorite relationship doesn't exist, create it (favorite)
+    const fav = await Favorite.create({
+      loggedInUserId,
+      favoriteUserId,
+    });
+
+    res.status(200).json({ message: "User favorited successfully.", fav });
+  } catch (error) {
+    console.error("Error handling userFavorites:", error);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+};
+
+const userUnfavorites = async (req, res) => {
+  try {
+    const { loggedInUserId, favoriteUserId } = req.body;
+
+    // Check if the favorite relationship exists
+    const existingFavorite = await Favorite.findOne({
+      loggedInUserId,
+      favoriteUserId,
+    });
+
+    if (!existingFavorite) {
+      return res.status(200).json({ message: "User is not favorited." });
+    }
+
+    // If the favorite relationship exists, remove it (unfavorite)
+    await Favorite.findOneAndDelete({
+      loggedInUserId,
+      favoriteUserId,
+    });
+
+    res.status(200).json({ message: "User unfavorited successfully." });
+  } catch (error) {
+    console.error("Error handling userUnfavorites:", error);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+};
+
+const userDislikes = async (req, res) => {
+  try {
+    const { loggedInUserId, dislikedUserId } = req.body;
+
+    // Check if the dislike relationship already exists
+    const existingDislike = await Dislike.findOne({
+      loggedInUserId,
+      dislikedUserId,
+    });
+
+    if (existingDislike) {
+      return res.status(200).json({ message: "User is already disliked." });
+    }
+
+    // Check if the favorite relationship exists, and if so, remove it (since we are disliking the user now)
+    await Favorite.findOneAndDelete({
+      loggedInUserId,
+      favoriteUserId: dislikedUserId,
+    });
+
+    // If the dislike relationship doesn't exist, create it (dislike)
+    const dislike = await Dislike.create({
+      loggedInUserId,
+      dislikedUserId,
+    });
+
+    res.status(200).json({ message: "User disliked successfully.", dislike });
+  } catch (error) {
+    console.error("Error handling userDislikes:", error);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+};
+
+const sendMessage = async (req, res) => {
+  try {
+    const { senderId, receiverId, content } = req.body;
+
+    // Check if there's a match between the sender and receiver
+    const existingMatch = await Match.findOne({
+      $or: [
+        { loggedInUserId: senderId, userId: receiverId },
+        { loggedInUserId: receiverId, userId: senderId },
+      ],
+    });
+
+    if (!existingMatch) {
+      // If no match is found, respond with an error
+      return res
+        .status(400)
+        .json({ error: "Match required to send a message." });
+    }
+
+    // Create a new message
+    const message = await Message.create({
+      senderId,
+      receiverId,
+      content,
+    });
+
+    pusher.trigger("messages", "new-message", message);
+
+    res.status(200).json({ message: "Message sent successfully.", message });
+  } catch (error) {
+    console.error("Error handling sendMessage:", error);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+};
+
+const updateSeenStatus = async (req, res) => {
+  try {
+    const { userId, messageId } = req.body;
+
+    // Find the message by ID
+    const message = await Message.findById(messageId);
+
+    if (!message) {
+      return res.status(404).json({ message: "Message not found" });
+    }
+
+    // Check if the message belongs to the specified user
+    if (
+      !message.senderId.equals(userId) &&
+      !message.receiverId.equals(userId)
+    ) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+
+    // If the message is sent by the user and has not been seen by the sender, mark it as seen
+    if (message.senderId.equals(userId) && !message.seenBySender) {
+      message.seenBySender = true;
+    }
+
+    // If the message is received by the user and has not been seen by the receiver, mark it as seen
+    if (message.receiverId.equals(userId) && !message.seenByReceiver) {
+      message.seen = true;
+    }
+
+    // Save the updated message
+    await message.save();
+
+    res.status(200).json({ message: "Seen status updated successfully." });
+  } catch (error) {
+    console.error("Error updating seen status:", error);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+};
+
+const getAllMessages = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Fetch all messages where the user is either the sender or receiver
+    const messages = await Message.find({
+      $or: [{ senderId: userId }, { receiverId: userId }],
+    });
+
+    // Get the seen status for the specified user
+    const seenStatus = await Message.find({
+      $or: [
+        { senderId: userId, seenBySender: false },
+        { receiverId: userId, seenBySender: true },
+      ],
+    });
+
+    // Merge the seen status with the messages
+    const messagesWithSeenStatus = messages.map((message) => {
+      const seen = seenStatus.some((status) => status._id.equals(message._id));
+      return { ...message._doc, seen };
+    });
+
+    // Send the response with all messages and their seen status
+    res.status(200).json({ messages: messagesWithSeenStatus });
+  } catch (error) {
+    console.error("Error getting all messages:", error);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+};
+
+const getAllUserMatches = async (req, res) => {
+  try {
+    const loggedInUserId = req.body.loggedInUserId || req.params.userId;
+
+    const loggedInUser = await User.findById(loggedInUserId);
+    if (!loggedInUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const matches = await Match.find({
+      $or: [{ loggedInUserId: loggedInUser._id }, { userId: loggedInUser._id }],
+    }).populate("loggedInUserId userId", "createdAt");
+
+    const matchedUserIds = matches.map((match) =>
+      match.loggedInUserId.equals(loggedInUser._id)
+        ? match.userId
+        : match.loggedInUserId
+    );
+
+    const matchedUsers = await User.find({
+      _id: { $in: matchedUserIds },
+    }).select("-password");
+
+    const lastMessages = await Message.aggregate([
+      {
+        $match: {
+          $or: [
+            { senderId: loggedInUser._id },
+            { receiverId: loggedInUser._id },
+          ],
+        },
+      },
+      {
+        $sort: { createdAt: -1 },
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ["$senderId", loggedInUser._id] },
+              "$receiverId",
+              "$senderId",
+            ],
+          },
+          lastMessage: { $first: "$$ROOT" },
+        },
+      },
+      {
+        $replaceRoot: {
+          newRoot: "$lastMessage",
+        },
+      },
+    ]);
+
+    const matchedUsersWithLastMessages = matchedUsers.map((user) => {
+      const match = matches.find(
+        (match) =>
+          (match.loggedInUserId.equals(loggedInUser._id) &&
+            match.userId.equals(user._id)) ||
+          (match.loggedInUserId.equals(user._id) &&
+            match.userId.equals(loggedInUser._id))
+      );
+
+      const lastMessage = lastMessages.find(
+        (message) =>
+          message.receiverId.toString() === user._id.toString() ||
+          message.senderId.toString() === user._id.toString()
+      );
+
+      const seen =
+        lastMessage &&
+        lastMessage.receiverId.toString() === loggedInUser._id.toString()
+          ? lastMessage.seen
+          : lastMessage?.seenBySender ?? false;
+
+      return {
+        user,
+        lastMessage: lastMessage
+          ? { ...lastMessage, seen }
+          : {
+              content: "Say Hi!",
+              seen: false,
+              createdAt: match.createdAt, // Use match's createdAt when no lastMessage
+            },
+      };
+    });
+
+    // Sort matchedUsersWithLastMessages based on lastMessage.createdAt
+    matchedUsersWithLastMessages.sort((a, b) => {
+      if (!a.lastMessage && !b.lastMessage) {
+        return 0;
+      } else if (!a.lastMessage) {
+        return 1;
+      } else if (!b.lastMessage) {
+        return -1;
+      } else {
+        return (
+          new Date(b.lastMessage.createdAt) - new Date(a.lastMessage.createdAt)
+        );
+      }
+    });
+
+    res.status(200).json({ matches: matchedUsersWithLastMessages });
+  } catch (err) {
+    console.error("Error fetching user matches:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+const getMessagesBetweenUsers = async (req, res) => {
+  try {
+    const { loggedInUserId, userId } = req.params;
+
+    // Fetch all messages between user1 and user2
+    const messages = await Message.find({
+      $or: [
+        { senderId: loggedInUserId, receiverId: userId },
+        { senderId: userId, receiverId: loggedInUserId },
+      ],
+    });
+
+    // Get the seen status for the loggedInUserId
+    const seenStatusUser1 = await Message.find({
+      senderId: loggedInUserId,
+      receiverId: userId,
+      seenBySender: false, // Fetch only messages that are not seen by the sender
+    });
+
+    // Merge the seen status with the messages
+    const messagesWithSeenStatus = messages.map((message) => {
+      // Check if the message is seen by the receiver
+      const seenByReceiver = message.seen;
+      // Check if the message is seen by the sender
+      const seenBySender = message.seenBySender;
+
+      // Determine the 'seen' status based on the logged-in user (receiver or sender)
+      let seen;
+      if (message.receiverId.equals(loggedInUserId)) {
+        seen = seenByReceiver;
+      } else {
+        seen = seenBySender;
+      }
+
+      return { ...message._doc, seen };
+    });
+
+    // Send the response with all messages and their seen status
+    res.status(200).json({ messages: messagesWithSeenStatus });
+  } catch (error) {
+    console.error("Error getting messages between users:", error);
+    res.status(500).json({ error: "Something went wrong." });
+  }
+};
+
+module.exports = {
+  getOtherUser,
+  getAllUsers,
+  blockUser,
+  updateUserPreference,
+  unblockUser,
+  userLikes,
+  userFavorites,
+  userUnfavorites,
+  userDislikes,
+  sendMessage,
+  updateSeenStatus,
+  getAllMessages,
+  getMessagesBetweenUsers,
+  getAllUserMatches,
+};
