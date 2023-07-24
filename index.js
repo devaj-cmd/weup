@@ -44,6 +44,7 @@ app.use(
       "https://lovebirdz-391210.web.app",
       "http://127.0.0.1:5173",
       "http://localhost:5173",
+      "http://localhost:5174",
     ],
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
