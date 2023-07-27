@@ -4,7 +4,6 @@ const Dislike = require("../model/Dislike");
 const Match = require("../model/Matches");
 const Favorite = require("../model/Favorite");
 const Message = require("../model/Message");
-
 const { calculateSimilarity, paginateResults } = require("../utils");
 const { fetchUserPhotos } = require("../utils/fetch.user.photos");
 const pusher = require("../libs/pusher");
@@ -373,7 +372,7 @@ const updateSeenStatus = async (req, res) => {
   try {
     const { userId, messageId } = req.body;
 
-    // Find the message by ID
+    // Find the specified message by ID
     const message = await Message.findById(messageId);
 
     if (!message) {
@@ -388,18 +387,38 @@ const updateSeenStatus = async (req, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
 
-    // If the message is sent by the user and has not been seen by the sender, mark it as seen
-    if (message.senderId.equals(userId) && !message.seenBySender) {
-      message.seenBySender = true;
+    // Find all messages before and including the specified message
+    const messagesToUpdate = await Message.find({
+      $or: [
+        {
+          $and: [
+            { receiverId: userId },
+            { createdAt: { $lte: message.createdAt } }, // Use $lte to include the message with messageId
+          ],
+        },
+        {
+          $and: [
+            { senderId: userId },
+            { createdAt: { $lte: message.createdAt } }, // Use $lte to include the message with messageId
+          ],
+        },
+      ],
+    });
+
+    // Update seen status for all messages in the messagesToUpdate array
+    for (const msg of messagesToUpdate) {
+      if (!msg.seen && msg.receiverId.equals(userId)) {
+        console.log(msg);
+        msg.seen = true;
+        await msg.save();
+      }
     }
 
-    // If the message is received by the user and has not been seen by the receiver, mark it as seen
-    if (message.receiverId.equals(userId) && !message.seenByReceiver) {
-      message.seen = true;
-    }
-
-    // Save the updated message
-    await message.save();
+    // Trigger the 'message-seen' event to notify the frontend
+    pusher.trigger("messages", "message-seen", {
+      userId: userId,
+      messageId: messageId,
+    });
 
     res.status(200).json({ message: "Seen status updated successfully." });
   } catch (error) {
@@ -417,18 +436,9 @@ const getAllMessages = async (req, res) => {
       $or: [{ senderId: userId }, { receiverId: userId }],
     });
 
-    // Get the seen status for the specified user
-    const seenStatus = await Message.find({
-      $or: [
-        { senderId: userId, seenBySender: false },
-        { receiverId: userId, seenBySender: true },
-      ],
-    });
-
     // Merge the seen status with the messages
     const messagesWithSeenStatus = messages.map((message) => {
-      const seen = seenStatus.some((status) => status._id.equals(message._id));
-      return { ...message._doc, seen };
+      return { ...message._doc, seen: message.seen };
     });
 
     // Send the response with all messages and their seen status
@@ -508,16 +518,10 @@ const getAllUserMatches = async (req, res) => {
           message.senderId.toString() === user._id.toString()
       );
 
-      const seen =
-        lastMessage &&
-        lastMessage.receiverId.toString() === loggedInUser._id.toString()
-          ? lastMessage.seen
-          : lastMessage?.seenBySender ?? false;
-
       return {
         user,
         lastMessage: lastMessage
-          ? { ...lastMessage, seen }
+          ? { ...lastMessage, seen: lastMessage.seen }
           : {
               content: "Say Hi!",
               seen: false,
@@ -560,33 +564,8 @@ const getMessagesBetweenUsers = async (req, res) => {
       ],
     });
 
-    // Get the seen status for the loggedInUserId
-    const seenStatusUser1 = await Message.find({
-      senderId: loggedInUserId,
-      receiverId: userId,
-      seenBySender: false, // Fetch only messages that are not seen by the sender
-    });
-
-    // Merge the seen status with the messages
-    const messagesWithSeenStatus = messages.map((message) => {
-      // Check if the message is seen by the receiver
-      const seenByReceiver = message.seen;
-      // Check if the message is seen by the sender
-      const seenBySender = message.seenBySender;
-
-      // Determine the 'seen' status based on the logged-in user (receiver or sender)
-      let seen;
-      if (message.receiverId.equals(loggedInUserId)) {
-        seen = seenByReceiver;
-      } else {
-        seen = seenBySender;
-      }
-
-      return { ...message._doc, seen };
-    });
-
     // Send the response with all messages and their seen status
-    res.status(200).json({ messages: messagesWithSeenStatus });
+    res.status(200).json({ messages });
   } catch (error) {
     console.error("Error getting messages between users:", error);
     res.status(500).json({ error: "Something went wrong." });

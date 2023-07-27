@@ -23,10 +23,6 @@ const messageSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  seenBySender: {
-    type: Boolean,
-    default: false,
-  },
 });
 
 const Message = mongoose.model("Message", messageSchema);
