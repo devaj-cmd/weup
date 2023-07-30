@@ -21,11 +21,17 @@ authRoute.post("/user/unfav", controller.userUnfavorites);
 
 authRoute.post("/user/send", controller.sendMessage);
 
-authRoute.post("/user/seen", controller.updateSeenStatus);
+authRoute.get(
+  "/user/conversation/:conversationId/seen",
+  controller.updateSeenStatus
+);
 
-authRoute.get("/user/allmessages/:userId", controller.getAllMessages);
+authRoute.get(
+  "/user/allmessages/:cId",
+  controller.getAllMessagesInConversation
+);
 
-authRoute.get("/user/matches/:userId", controller.getAllUserMatches);
+authRoute.get("/user/conversations/:c", controller.getAllConversations);
 
 authRoute.get(
   "/user/messages/:loggedInUserId/:userId",

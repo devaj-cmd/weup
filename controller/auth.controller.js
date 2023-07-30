@@ -4,6 +4,8 @@ const Dislike = require("../model/Dislike");
 const Match = require("../model/Matches");
 const Favorite = require("../model/Favorite");
 const Message = require("../model/Message");
+const Conversation = require("../model/Conversation");
+
 const { calculateSimilarity, paginateResults } = require("../utils");
 const { fetchUserPhotos } = require("../utils/fetch.user.photos");
 const pusher = require("../libs/pusher");
@@ -234,8 +236,20 @@ const userLikes = async (req, res) => {
         userId: likedUserId, // Use userId instead of likedUserId
       });
 
-      // Send a response indicating that it's a match
-      return res.status(200).json({ message: "It's a match!" });
+      // Create a new Conversation document
+      const conversation = await Conversation.create({
+        userIds: [loggedInUserId, likedUserId],
+      });
+
+      // Get the details of the matched user
+      const matchedUser = await User.findById(likedUserId);
+
+      // Send a response indicating that it's a match along with the matched user and conversationId
+      return res.status(200).json({
+        message: "It's a match!",
+        matchedUser,
+        conversationId: conversation._id,
+      });
     }
 
     // Send a response indicating a successful like
@@ -346,10 +360,21 @@ const sendMessage = async (req, res) => {
     });
 
     if (!existingMatch) {
-      // If no match is found, respond with an error
+      // If no match is found, respond with a bad request
       return res
         .status(400)
         .json({ error: "Match required to send a message." });
+    }
+
+    // Find or create a conversation between the sender and receiver
+    let conversation = await Conversation.findOne({
+      userIds: { $all: [senderId, receiverId] },
+    });
+
+    if (!conversation) {
+      conversation = await Conversation.create({
+        userIds: [senderId, receiverId],
+      });
     }
 
     // Create a new message
@@ -357,9 +382,18 @@ const sendMessage = async (req, res) => {
       senderId,
       receiverId,
       content,
+      conversationId: conversation._id,
+      seen: [senderId],
     });
 
-    pusher.trigger("messages", "new-message", message);
+    // Add the senderId to the seen array
+
+    // Update the lastMessageAt field for the conversation
+    conversation.lastMessageAt = message.createdAt;
+    conversation.messages.push(message);
+
+    await conversation.save();
+    await pusher.trigger("messages", "new-message", message);
 
     res.status(200).json({ message: "Message sent successfully.", message });
   } catch (error) {
@@ -369,55 +403,60 @@ const sendMessage = async (req, res) => {
 };
 
 const updateSeenStatus = async (req, res) => {
+  const conversationId = req.params.conversationId;
+
   try {
-    const { userId, messageId } = req.body;
+    // Find the conversation by its ID
+    const conversation = await Conversation.findById(conversationId)
+      .populate("userIds")
+      .populate("messages");
 
-    // Find the specified message by ID
-    const message = await Message.findById(messageId);
-
-    if (!message) {
-      return res.status(404).json({ message: "Message not found" });
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found." });
     }
 
-    // Check if the message belongs to the specified user
-    if (
-      !message.senderId.equals(userId) &&
-      !message.receiverId.equals(userId)
-    ) {
-      return res.status(403).json({ message: "Access denied" });
+    // Get the latest message in the conversation
+    const latestMessage =
+      conversation.messages.length > 0
+        ? conversation.messages[conversation.messages.length - 1]
+        : null;
+
+    // If there are no messages in the conversation or no latestMessage, return early
+    if (!latestMessage) {
+      return res
+        .status(200)
+        .json({ message: "No messages in the conversation." });
     }
 
-    // Find all messages before and including the specified message
-    const messagesToUpdate = await Message.find({
-      $or: [
+    // Get the list of users (user IDs) in the conversation
+    const usersInConversation = conversation.userIds.map((user) => user._id);
+
+    // Find the user who hasn't seen the message yet
+    const userNotSeen = usersInConversation.find(
+      (userId) => !latestMessage.seen.includes(userId)
+    );
+
+    // Add the user ID to the seen array if they haven't seen the message yet
+    if (userNotSeen) {
+      // Find all the messages that belong to the conversation and haven't been seen by the user
+      const messagesToUpdate = conversation.messages.filter(
+        (message) => !message.seen.includes(userNotSeen)
+      );
+
+      // Update the seen array for all the messages at once
+      await Message.updateMany(
         {
-          $and: [
-            { receiverId: userId },
-            { createdAt: { $lte: message.createdAt } }, // Use $lte to include the message with messageId
-          ],
+          _id: { $in: messagesToUpdate.map((message) => message._id) },
         },
-        {
-          $and: [
-            { senderId: userId },
-            { createdAt: { $lte: message.createdAt } }, // Use $lte to include the message with messageId
-          ],
-        },
-      ],
-    });
-
-    // Update seen status for all messages in the messagesToUpdate array
-    for (const msg of messagesToUpdate) {
-      if (!msg.seen && msg.receiverId.equals(userId)) {
-        console.log(msg);
-        msg.seen = true;
-        await msg.save();
-      }
+        { $addToSet: { seen: userNotSeen } }
+      );
     }
 
-    // Trigger the 'message-seen' event to notify the frontend
-    pusher.trigger("messages", "message-seen", {
-      userId: userId,
-      messageId: messageId,
+    // Emit a "seen" event to Pusher to notify other users in the conversation
+    await pusher.trigger("messages", "seen", {
+      conversationId: conversation._id,
+      messageId: latestMessage._id,
+      userId: userNotSeen,
     });
 
     res.status(200).json({ message: "Seen status updated successfully." });
@@ -427,128 +466,46 @@ const updateSeenStatus = async (req, res) => {
   }
 };
 
-const getAllMessages = async (req, res) => {
+const getAllMessagesInConversation = async (req, res) => {
   try {
-    const { userId } = req.params;
+    const { cId } = req.params;
 
-    // Fetch all messages where the user is either the sender or receiver
+    // Find the conversation using its ID
+    const conversation = await Conversation.findById(cId);
+
+    if (!conversation) {
+      return res.status(404).json({ error: "Conversation not found." });
+    }
+
+    // Retrieve all messages using the Message IDs from the conversation
     const messages = await Message.find({
-      $or: [{ senderId: userId }, { receiverId: userId }],
+      _id: { $in: conversation.messages },
     });
 
-    // Merge the seen status with the messages
-    const messagesWithSeenStatus = messages.map((message) => {
-      return { ...message._doc, seen: message.seen };
-    });
-
-    // Send the response with all messages and their seen status
-    res.status(200).json({ messages: messagesWithSeenStatus });
+    return res.status(200).json({ messages });
   } catch (error) {
-    console.error("Error getting all messages:", error);
+    console.error("Error fetching messages in conversation:", error);
     res.status(500).json({ error: "Something went wrong." });
   }
 };
 
-const getAllUserMatches = async (req, res) => {
+const getAllConversations = async (req, res) => {
+  // console.log(req.params);
   try {
-    const loggedInUserId = req.body.loggedInUserId || req.params.userId;
+    const { c } = req.params;
 
-    const loggedInUser = await User.findById(loggedInUserId);
-    if (!loggedInUser) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    // Fetch all conversations where the user is a part of
+    const conversations = await Conversation.find({
+      userIds: c,
+    })
+      .populate("userIds")
+      .populate("messages")
+      .sort({ lastMessageAt: -1 });
 
-    const matches = await Match.find({
-      $or: [{ loggedInUserId: loggedInUser._id }, { userId: loggedInUser._id }],
-    }).populate("loggedInUserId userId", "createdAt");
-
-    const matchedUserIds = matches.map((match) =>
-      match.loggedInUserId.equals(loggedInUser._id)
-        ? match.userId
-        : match.loggedInUserId
-    );
-
-    const matchedUsers = await User.find({
-      _id: { $in: matchedUserIds },
-    }).select("-password");
-
-    const lastMessages = await Message.aggregate([
-      {
-        $match: {
-          $or: [
-            { senderId: loggedInUser._id },
-            { receiverId: loggedInUser._id },
-          ],
-        },
-      },
-      {
-        $sort: { createdAt: -1 },
-      },
-      {
-        $group: {
-          _id: {
-            $cond: [
-              { $eq: ["$senderId", loggedInUser._id] },
-              "$receiverId",
-              "$senderId",
-            ],
-          },
-          lastMessage: { $first: "$$ROOT" },
-        },
-      },
-      {
-        $replaceRoot: {
-          newRoot: "$lastMessage",
-        },
-      },
-    ]);
-
-    const matchedUsersWithLastMessages = matchedUsers.map((user) => {
-      const match = matches.find(
-        (match) =>
-          (match.loggedInUserId.equals(loggedInUser._id) &&
-            match.userId.equals(user._id)) ||
-          (match.loggedInUserId.equals(user._id) &&
-            match.userId.equals(loggedInUser._id))
-      );
-
-      const lastMessage = lastMessages.find(
-        (message) =>
-          message.receiverId.toString() === user._id.toString() ||
-          message.senderId.toString() === user._id.toString()
-      );
-
-      return {
-        user,
-        lastMessage: lastMessage
-          ? { ...lastMessage, seen: lastMessage.seen }
-          : {
-              content: "Say Hi!",
-              seen: false,
-              createdAt: match.createdAt, // Use match's createdAt when no lastMessage
-            },
-      };
-    });
-
-    // Sort matchedUsersWithLastMessages based on lastMessage.createdAt
-    matchedUsersWithLastMessages.sort((a, b) => {
-      if (!a.lastMessage && !b.lastMessage) {
-        return 0;
-      } else if (!a.lastMessage) {
-        return 1;
-      } else if (!b.lastMessage) {
-        return -1;
-      } else {
-        return (
-          new Date(b.lastMessage.createdAt) - new Date(a.lastMessage.createdAt)
-        );
-      }
-    });
-
-    res.status(200).json({ matches: matchedUsersWithLastMessages });
-  } catch (err) {
-    console.error("Error fetching user matches:", err);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(200).json(conversations);
+  } catch (error) {
+    console.error("Error getting all conversations:", error);
+    res.status(500).json({ error: "Something went wrong." });
   }
 };
 
@@ -584,7 +541,7 @@ module.exports = {
   userDislikes,
   sendMessage,
   updateSeenStatus,
-  getAllMessages,
+  getAllMessagesInConversation,
+  getAllConversations,
   getMessagesBetweenUsers,
-  getAllUserMatches,
 };
