@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const preferenceSchema = new mongoose.Schema(
+const preferencechema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -31,8 +31,8 @@ const preferenceSchema = new mongoose.Schema(
       // No longer required
     },
     height: {
-      type: Number,
-      default: 0,
+      type: [String],
+      default: [],
       // No longer required
     },
     kids: {
@@ -57,6 +57,6 @@ const preferenceSchema = new mongoose.Schema(
   }
 );
 
-const Preference = mongoose.model("Preference", preferenceSchema);
+const Preference = mongoose.model("Preference", preferencechema);
 
 module.exports = Preference;

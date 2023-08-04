@@ -15,7 +15,7 @@ const calculateAgeSimilarity = (loggedInUserAge, otherUserAge) => {
   return ageSimilarity;
 };
 
-// Function to calculate similarity score based on user preferences
+// Function to calculate similarity score based on user preference
 const calculateSimilarity = (loggedInUser, otherUser) => {
   let score = 0;
 

@@ -7,7 +7,10 @@ const Message = require("../model/Message");
 const Conversation = require("../model/Conversation");
 
 const { calculateSimilarity, paginateResults } = require("../utils");
-const { fetchUserPhotos } = require("../utils/fetch.user.photos");
+const {
+  fetchUserPhotos,
+  fetchUserPhotosAndSendResponse,
+} = require("../utils/fetch.user.photos");
 const pusher = require("../libs/pusher");
 
 const getOtherUser = async (req, res) => {
@@ -78,7 +81,7 @@ const getAllUsers = async (req, res) => {
           gender: 1,
           interested_gender: 1,
           phoneNumber: 1,
-          preferences: 1,
+          preference: 1,
         },
       },
     ]);
@@ -153,7 +156,7 @@ const blockUser = async (req, res) => {
 
 const updateUserPreference = async (req, res) => {
   try {
-    const { loggedInUserId, preferences } = req.body;
+    const { loggedInUserId, preference } = req.body;
 
     // Find the user by userId
     const loggedInUser = await User.findById(loggedInUserId);
@@ -162,19 +165,17 @@ const updateUserPreference = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Update the user's preferences
-    loggedInUser.preferences = {
-      ...loggedInUser.preferences,
-      ...preferences,
+    // Update the user's preference
+    loggedInUser.preference = {
+      ...loggedInUser.preference,
+      ...preference,
     };
 
     // Save the updated user to the database
     const updatedUser = await loggedInUser.save();
 
     // Remove the password field from the user object
-    const { password, ...sanitizedUser } = updatedUser.toObject();
-
-    res.json({ message: "User preferences updated", user: sanitizedUser });
+    fetchUserPhotosAndSendResponse(updatedUser, res);
   } catch (error) {
     console.log(error);
     res.status(500).json({ message: "Internal server error" });

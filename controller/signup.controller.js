@@ -75,7 +75,7 @@ const registerUser = async (req, res) => {
     const hashedPassword =
       password !== "" && (await bcrypt.hash(password, saltRounds));
 
-    // Create a new user with default preferences
+    // Create a new user with default preference
     const newUser = new User({
       name,
       email,

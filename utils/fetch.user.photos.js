@@ -9,7 +9,7 @@ const fetchUserPhotosAndSendResponse = async (user, res) => {
   user.photos = photosToAdd;
 
   const photoToSend = user.photos.map((photo) => photo.imageUrl);
-  const { photos, ...userDetails } = user.toObject();
+  const { photos, password, ...userDetails } = user.toObject();
 
   // Generate authentication tokens
   const { authToken } = generateAuthTokens(user);

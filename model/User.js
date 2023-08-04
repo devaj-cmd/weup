@@ -13,7 +13,7 @@ const userSchema = new mongoose.Schema(
     status: { type: String, default: "pending" },
     my_interests: { type: [String], default: [] },
     interested_gender: { type: String },
-    preferences: { type: mongoose.Schema.Types.Mixed, default: {} },
+    preference: { type: mongoose.Schema.Types.Mixed, default: {} },
     reports: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Report", default: [] },
     ],

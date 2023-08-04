@@ -1,4 +1,5 @@
 // Function to paginate the results
+
 const paginateResults = (results, page, limit) => {
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
@@ -29,10 +30,48 @@ const calculateAgeSimilarity = (loggedInUserAge, otherUserAge) => {
   return ageSimilarity;
 };
 
-// Function to calculate similarity score based on user preferences
+// Function to convert height in feet and inches to inches
+const convertFootInchesToInches = (height) => {
+  const [feet, inches] = height.split("'");
+  const totalInches =
+    parseInt(feet) * 12 + (inches ? parseInt(inches.replace('"', "")) : 0);
+  return totalInches;
+};
+
+// Function to calculate height similarity
+const calculateHeightSimilarity = (loggedInUserHeight, otherUserHeight) => {
+  const loggedInUserMinInches = convertFootInchesToInches(
+    loggedInUserHeight[0]
+  );
+  const loggedInUserMaxInches = convertFootInchesToInches(
+    loggedInUserHeight[1]
+  );
+  const otherUserMinInches = convertFootInchesToInches(otherUserHeight[0]);
+  const otherUserMaxInches = convertFootInchesToInches(otherUserHeight[1]);
+
+  // Check if the height ranges overlap or not
+  if (
+    loggedInUserMinInches > otherUserMaxInches ||
+    loggedInUserMaxInches < otherUserMinInches
+  ) {
+    return 0; // No overlap, height ranges are completely different
+  }
+
+  // Find the intersection of the height ranges
+  const intersectionMin = Math.max(loggedInUserMinInches, otherUserMinInches);
+  const intersectionMax = Math.min(loggedInUserMaxInches, otherUserMaxInches);
+
+  const intersectionDiff = intersectionMax - intersectionMin;
+  const heightDiff = loggedInUserMaxInches - loggedInUserMinInches;
+
+  const heightSimilarity = intersectionDiff / heightDiff;
+
+  return heightSimilarity;
+};
+// Function to calculate similarity score based on user preference
 const calculateSimilarity = (loggedInUser, otherUser) => {
-  const loggedInUserPreference = loggedInUser.preferences;
-  const otherUserPreference = otherUser.preferences;
+  const loggedInUserPreference = loggedInUser.preference;
+  const otherUserPreference = otherUser.preference;
   let score = 0;
 
   // Age similarity
@@ -43,23 +82,26 @@ const calculateSimilarity = (loggedInUser, otherUser) => {
   score += ageScore;
 
   // Height similarity
-  const heightDiff = Math.abs(
-    loggedInUserPreference.height - otherUserPreference.height
+  const heightScore = calculateHeightSimilarity(
+    loggedInUserPreference.height,
+    otherUserPreference.height
   );
-  const heightScore = heightDiff <= 5 ? 1 : 0;
   score += heightScore;
 
   // Distance similarity
-  const distanceDiff = Math.abs(
-    loggedInUserPreference.distance - otherUserPreference.distance
-  );
-  const distanceScore = distanceDiff <= 10 ? 1 : 0;
+  const distanceScore =
+    otherUserPreference.distance <= loggedInUserPreference.distance ? 1 : 0;
   score += distanceScore;
 
   // Ethnicity similarity
   const ethnicityScore =
     loggedInUserPreference.ethnicity === otherUserPreference.ethnicity ? 1 : 0;
   score += ethnicityScore;
+
+  // Religion similarity
+  const religionScore =
+    loggedInUserPreference.religion === otherUserPreference.religion ? 1 : 0;
+  score += religionScore;
 
   // Relationship goals similarity
   const relationshipGoalsScore =
@@ -74,10 +116,20 @@ const calculateSimilarity = (loggedInUser, otherUser) => {
     loggedInUserPreference.smoking === otherUserPreference.smoking ? 1 : 0;
   score += smokingScore;
 
+  // Education similarity
+  const educationScore =
+    loggedInUserPreference.education === otherUserPreference.education ? 1 : 0;
+  score += educationScore;
+
   // Drinking similarity
   const drinkingScore =
     loggedInUserPreference.drinking === otherUserPreference.drinking ? 1 : 0;
   score += drinkingScore;
+
+  // Kids similarity
+  const kidsScore =
+    loggedInUserPreference.kids === otherUserPreference.kids ? 1 : 0;
+  score += kidsScore;
 
   // Interested gender similarity
   const interestedGenderScore =
